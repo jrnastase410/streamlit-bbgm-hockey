@@ -1,0 +1,14 @@
+black
+flake8
+isort
+jupyter
+loguru
+numpy
+pandas
+pip
+polars
+pyarrow
+python-dotenv
+scipy
+tqdm
+typer
