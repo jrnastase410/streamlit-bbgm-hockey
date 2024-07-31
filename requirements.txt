@@ -2,6 +2,7 @@ black
 flake8
 isort
 loguru
+matplotlib
 numpy
 pandas
 pip
