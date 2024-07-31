@@ -10,6 +10,8 @@ plotly
 pyarrow
 python-dotenv
 scipy
+scikit-learn
 streamlit
 tqdm
 typer
+xgboost
