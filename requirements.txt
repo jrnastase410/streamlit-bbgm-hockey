@@ -1,14 +1,15 @@
 black
 flake8
 isort
-jupyter
 loguru
 numpy
 pandas
 pip
 polars
+plotly
 pyarrow
 python-dotenv
 scipy
+streamlit
 tqdm
 typer

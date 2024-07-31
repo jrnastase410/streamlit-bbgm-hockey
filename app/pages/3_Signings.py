@@ -1,7 +1,6 @@
 import streamlit as st
 import polars as pl
 import numpy as np
-from hgm.plots.player_plots import player_plot
 
 # Set page configuration with Bootstrap theme
 st.set_page_config(
