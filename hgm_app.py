@@ -1,11 +1,11 @@
 import streamlit as st
 import polars as pl
 from hgm.data.process_data import load_and_process_players
-from hgm.config import DATA_DIR, logger
+from hgm.config import DATA_DIR
 
 # Set page configuration with Bootstrap theme
 st.set_page_config(
-    page_title='Home / Upload',
+    page_title='Splunk CIM Documentation',
     layout='centered',
     page_icon=':open_file_folder:'
 )
@@ -16,7 +16,7 @@ def upload_json():
 
 
 def load_teams(json_data):
-    logger.info('Loading teams')
+    # logger.info('Loading teams')
     return (
         json_data.select('teams').explode('teams').unnest('teams')
         .select('tid', pl.col('abbrev').alias('team'), )
@@ -25,7 +25,8 @@ def load_teams(json_data):
 
 
 def load_players(json_data, team_data, settings):
-    logger.info('Loading players')
+    # logger.info('Loading players')
+    n_teams = int(32)
     players_raw = json_data.select('players').explode('players').unnest('players').lazy()
     progression = pl.scan_parquet(DATA_DIR / 'constants' / 'calculated_progs.parquet')
     return (
@@ -36,20 +37,41 @@ def load_players(json_data, team_data, settings):
         .with_columns(max_value=pl.col('value').max().over('pid'))
         .with_columns(sum_value=pl.col('value').sum().over('pid'))
         .with_columns(p_rk=pl.col('ovr').rank(method='ordinal', descending=True).over(['season', 'pos']))
+        .with_columns(
+            is_prospect=pl.when((pl.col('age') <= 21) & (pl.col('team') != 'Draft')).then(pl.lit(True)).otherwise(
+                pl.lit(False)))
+        .with_columns(pr_rk=(
+            pl.when(pl.col('is_prospect') == True)
+            .then(pl.col('sum_value').rank(method='ordinal', descending=True).over(['season', 'is_prospect']))
+            .otherwise(pl.lit(None))
+        ))
+        .with_columns(pr_rk_pos=(
+            pl.when(pl.col('is_prospect') == True)
+            .then(pl.col('sum_value').rank(method='ordinal', descending=True).over(['season', 'pos', 'is_prospect']))
+            .otherwise(pl.lit(None))
+        ))
         .with_columns(line=(
-            pl.when((pl.col('pos') == 'G') & (pl.col('p_rk') <= 32)).then(pl.lit('Starter'))
-            .when((pl.col('pos') == 'G') & (pl.col('p_rk').is_between(33, 64))).then(pl.lit('Backup'))
-            .when((pl.col('pos') == 'C') & (pl.col('p_rk') <= 32)).then(pl.lit('1st Line'))
-            .when((pl.col('pos') == 'C') & (pl.col('p_rk').is_between(33, 64))).then(pl.lit('2nd Line'))
-            .when((pl.col('pos') == 'C') & (pl.col('p_rk').is_between(65, 96))).then(pl.lit('3rd Line'))
-            .when((pl.col('pos') == 'C') & (pl.col('p_rk').is_between(97, 128))).then(pl.lit('4th Line'))
-            .when((pl.col('pos') == 'W') & (pl.col('p_rk') <= 64)).then(pl.lit('1st Line'))
-            .when((pl.col('pos') == 'W') & (pl.col('p_rk').is_between(65, 128))).then(pl.lit('2nd Line'))
-            .when((pl.col('pos') == 'W') & (pl.col('p_rk').is_between(129, 192))).then(pl.lit('3rd Line'))
-            .when((pl.col('pos') == 'W') & (pl.col('p_rk').is_between(193, 256))).then(pl.lit('4th Line'))
-            .when((pl.col('pos') == 'D') & (pl.col('p_rk') <= 64)).then(pl.lit('1st Pair'))
-            .when((pl.col('pos') == 'D') & (pl.col('p_rk').is_between(65, 128))).then(pl.lit('2nd Pair'))
-            .when((pl.col('pos') == 'D') & (pl.col('p_rk').is_between(129, 192))).then(pl.lit('3rd Pair'))
+            pl.when((pl.col('pos') == 'G') & (pl.col('p_rk') <= n_teams)).then(pl.lit('Starter'))
+            .when((pl.col('pos') == 'G') & (pl.col('p_rk').is_between(n_teams + 1, 2 * n_teams))).then(pl.lit('Backup'))
+            .when((pl.col('pos') == 'C') & (pl.col('p_rk') <= n_teams)).then(pl.lit('1st Line'))
+            .when((pl.col('pos') == 'C') & (pl.col('p_rk').is_between(n_teams + 1, 2 * n_teams))).then(
+                pl.lit('2nd Line'))
+            .when((pl.col('pos') == 'C') & (pl.col('p_rk').is_between(2 * n_teams + 1, 3 * n_teams))).then(
+                pl.lit('3rd Line'))
+            .when((pl.col('pos') == 'C') & (pl.col('p_rk').is_between(3 * n_teams + 1, 4 * n_teams))).then(
+                pl.lit('4th Line'))
+            .when((pl.col('pos') == 'W') & (pl.col('p_rk') <= 2 * n_teams)).then(pl.lit('1st Line'))
+            .when((pl.col('pos') == 'W') & (pl.col('p_rk').is_between(2 * n_teams + 1, 4 * n_teams))).then(
+                pl.lit('2nd Line'))
+            .when((pl.col('pos') == 'W') & (pl.col('p_rk').is_between(4 * n_teams + 1, 6 * n_teams))).then(
+                pl.lit('3rd Line'))
+            .when((pl.col('pos') == 'W') & (pl.col('p_rk').is_between(6 * n_teams + 1, 8 * n_teams))).then(
+                pl.lit('4th Line'))
+            .when((pl.col('pos') == 'D') & (pl.col('p_rk') <= 2 * n_teams)).then(pl.lit('1st Pair'))
+            .when((pl.col('pos') == 'D') & (pl.col('p_rk').is_between(2 * n_teams + 1, 4 * n_teams))).then(
+                pl.lit('2nd Pair'))
+            .when((pl.col('pos') == 'D') & (pl.col('p_rk').is_between(4 * n_teams + 1, 6 * n_teams))).then(
+                pl.lit('3rd Pair'))
             .otherwise(pl.lit('Reserve'))
         ))
     )

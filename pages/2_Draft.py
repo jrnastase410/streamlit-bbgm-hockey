@@ -3,7 +3,7 @@ import polars as pl
 
 # Set page configuration with Bootstrap theme
 st.set_page_config(
-    page_title='Selection Guide',
+    page_title='Splunk CIM Selection',
     layout='wide'
 )
 
@@ -30,6 +30,9 @@ def main():
             (pl.col('tid') == -2) & (pl.col('season') == game_settings['season']) & (
                     pl.col('draft_year') == game_settings['season'])
         )
+        .with_columns(
+            sort_value=5 * pl.col('max_value') + pl.col('sum_value')
+        )
         .to_pandas()
     )
 
@@ -41,19 +44,21 @@ def main():
     st.markdown("""### Available Players""", unsafe_allow_html=True)
 
     edited_df = st.data_editor(
-        draft[['Drafted', 'player', 'pos', 'age', 'ovr', 'pot', 'max_value', 'sum_value', 'pid']]
-        .sort_values('max_value', ascending=False).style
+        draft[['Drafted', 'player', 'pos', 'age', 'ovr', 'pot', 'max_value', 'sum_value', 'sort_value', 'pid']]
+        .sort_values('sort_value', ascending=False).style
         .background_gradient(cmap='RdBu_r', vmin=26, vmax=80,
                              subset=['ovr', 'pot'])
         .background_gradient(cmap='RdBu_r', vmin=0, vmax=draft[draft.Drafted == False]['max_value'].max(),
                              subset=['max_value'])
         .background_gradient(cmap='RdBu_r', vmin=0, vmax=draft[draft.Drafted == False]['sum_value'].max(),
                              subset=['sum_value'])
+        .background_gradient(cmap='RdBu_r', vmin=0, vmax=draft[draft.Drafted == False]['sort_value'].max(),
+                             subset=['sort_value'])
         .format(precision=0)
-        .format(precision=2, subset=['max_value', 'sum_value']),
+        .format(precision=2, subset=['max_value', 'sum_value', 'sort_value']),
         hide_index=True,
         column_config={"Drafted": st.column_config.CheckboxColumn(required=True)},
-        disabled=['max_value', 'sum_value', 'ovr', 'pot'],
+        disabled=['max_value', 'sum_value', 'sort_value', 'ovr', 'pot'],
         use_container_width=True
     )
 

@@ -124,7 +124,7 @@ def load_players(player_data, progs_data, settings):
 
 
 # %%
-def add_placeholder_salaries(df):
+def add_placeholder_salaries(df, settings):
     last_contracts = (
         df
         .filter(pl.col('salary').is_not_null())
@@ -139,7 +139,7 @@ def add_placeholder_salaries(df):
     last_contracts = (
         last_contracts
         .with_columns(on_last_contract=salary_model.predict(last_contracts.select(['pos', 'age', 'ovr', 'salary'])))
-        .with_columns(pl.col('on_last_contract').mul(1.25).clip(0, 13))
+        .with_columns(pl.col('on_last_contract').mul(1.25).clip(0, settings['maxContract'] / 1000))
     )
 
     no_contracts = (
@@ -156,7 +156,7 @@ def add_placeholder_salaries(df):
     no_contracts = (
         no_contracts
         .with_columns(on_no_contract=salary_model.predict(no_contracts.select(['pos', 'age', 'ovr', 'salary'])))
-        .with_columns(pl.col('on_no_contract').mul(1.25).clip(0, 13))
+        .with_columns(pl.col('on_no_contract').mul(1.25).clip(0, settings['maxContract'] / 1000))
     )
 
     df = (
@@ -185,7 +185,7 @@ def load_and_process_players(player_data, prog_data, settings):
     players = (
         load_players(player_data, prog_data, settings)
         .collect()
-        .pipe(add_placeholder_salaries)
+        .pipe(add_placeholder_salaries, settings=settings)
         .lazy()
         .with_columns(
             pot=pl.col('ovr').max().over('pid'),

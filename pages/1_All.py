@@ -5,7 +5,7 @@ from hgm.plots.player_plots import player_plot
 
 # Set page configuration with Bootstrap theme
 st.set_page_config(
-    page_title='Show All',
+    page_title='Splunk Source List',
     layout='wide'
 )
 
@@ -75,15 +75,15 @@ def display_and_select_pids(df):
             df_with_selections
             .style
             .format(precision=0, subset=['pid', 'age', 'ovr', 'pot', 'p_rk'])
-            .format(precision=2, subset=['cv_current', 'cv_next', 'cv_total', 'value', 'salary','sum_value'])
-            .background_gradient(cmap='RdBu_r', vmin=26, vmax=80, subset=['ovr', 'pot'])
-            .background_gradient(cmap='RdBu_r', vmin=-50, vmax=50, subset=['cv_current'])
-            .background_gradient(cmap='RdBu_r', vmin=-50, vmax=50, subset=['cv_next'])
-            .background_gradient(cmap='RdBu_r', vmin=-50, vmax=50, subset=['cv_total'])
-            .background_gradient(cmap='RdBu_r', vmin=-75, vmax=75, subset=['sum_value'])
-            .background_gradient(cmap='RdBu_r', vmin=-15, vmax=15,
+            .format(precision=2, subset=['cv_current', 'cv_next', 'cv_total', 'value', 'salary', 'sum_value'])
+            .background_gradient(cmap='RdBu_r', vmin=10, vmax=100, subset=['ovr', 'pot'])
+            .background_gradient(cmap='RdBu_r', vmin=-75, vmax=75, subset=['cv_current'])
+            .background_gradient(cmap='RdBu_r', vmin=-75, vmax=75, subset=['cv_next'])
+            .background_gradient(cmap='RdBu_r', vmin=-100, vmax=100, subset=['cv_total'])
+            .background_gradient(cmap='RdBu_r', vmin=-200, vmax=200, subset=['sum_value'])
+            .background_gradient(cmap='RdBu_r', vmin=-25, vmax=25,
                                  subset=['value'])
-            .background_gradient(cmap='RdBu_r', vmin=-13, vmax=13, subset=['salary'])
+            .background_gradient(cmap='RdBu_r', vmin=-25, vmax=25, subset=['salary'])
             .background_gradient(cmap='RdBu', vmin=0, vmax=10, subset=['years'])
         )
         ,
@@ -154,7 +154,7 @@ def main():
             (pl.col('pid').is_in(st.session_state['selected_pids']))
         )
         .select(
-            'player', 'team', 'pos', 'age', 'p_rk', 'ovr', pl.col('pot').round(0), 'years', 'salary',
+            'player', 'team', 'pos', 'age', 'p_rk', 'pr_rk', 'ovr', pl.col('pot').round(0), 'years', 'salary',
             pl.col('value').round(2), pl.col('cv_current').round(2), pl.col('cv_total').round(2)
         )
         .sort('cv_total', descending=True)
@@ -175,18 +175,14 @@ def main():
     [st.plotly_chart(player_plot(players, pid), use_container_width=True)
      for pid in st.session_state['selected_pids']]
 
-    st.bar_chart(
+    st.dataframe(
         players
-        .filter(pl.col('season') == settings['season'])
+        .filter(pl.col('season') == settings['season'] + 0)
         .filter(pl.col('tid') >= 0)
-        .select('team', 'value', 'cv_current', pl.col('cv_next').clip(0, ), 'cv_total')
+        .select('team', 'value', 'sum_value', 'cv_current', pl.col('cv_next').clip(0, ), 'cv_total')
         .group_by('team')
         .sum()
-        .sort('cv_total', descending=True),
-        x='team',
-        y='cv_total',
-        horizontal=True
-    )
+        .sort('cv_total', descending=True))
 
 
 if __name__ == '__main__':
