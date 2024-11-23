@@ -75,12 +75,11 @@ def display_and_select_pids(df):
             df_with_selections
             .style
             .format(precision=0, subset=['pid', 'age', 'ovr', 'pot', 'p_rk'])
-            .format(precision=2, subset=['cv_current', 'cv_next', 'cv_total', 'value', 'salary', 'sum_value'])
+            .format(precision=2, subset=['cv_total', 'value', 'salary', 'sum_value', 'draft_v'])
             .background_gradient(cmap='RdBu_r', vmin=26, vmax=80, subset=['ovr', 'pot'])
-            .background_gradient(cmap='RdBu_r', vmin=-50, vmax=50, subset=['cv_current'])
-            .background_gradient(cmap='RdBu_r', vmin=-50, vmax=50, subset=['cv_next'])
             .background_gradient(cmap='RdBu_r', vmin=-50, vmax=50, subset=['cv_total'])
             .background_gradient(cmap='RdBu_r', vmin=-75, vmax=75, subset=['sum_value'])
+            .background_gradient(cmap='RdBu_r', vmin=-75, vmax=75, subset=['draft_v'])
             .background_gradient(cmap='RdBu_r', vmin=-15, vmax=15,
                                  subset=['value'])
             .background_gradient(cmap='RdBu_r', vmin=-13, vmax=13, subset=['salary'])
@@ -120,13 +119,23 @@ def main():
 
     df_display = (
         df_filtered
-        .filter(pl.col('season') == settings['season'] + 1)
+        .with_columns(max_ovr=pl.col('value').max().over('pid'))
+        .filter(pl.col('season') == settings['season'] + 0
+                )
+        .filter(pl.col('player') != 'Sebastian Aho')
         .select(
             'player', 'pid', 'team', 'pos', 'age', 'p_rk', 'line', 'ovr', 'pot', 'years', 'salary',
-            pl.col('value'), pl.col('sum_value'),
-            pl.col('cv_current'), pl.col('cv_next'), pl.col('cv_total')
+            pl.col('value'), pl.col('sum_value'), pl.col('cv_total'),
+            (
+                    pl.col('value') +
+                    0.5
+                    * pl.col('sum_value') +
+                    pl.col('max_ovr') +
+                    pl.col('cv_current') +
+                    pl.when((pl.col('pos') == 'C') & (pl.col('ovr') >= 54)).then(2).otherwise(0)
+            ).alias('draft_v')
         )
-        .sort('cv_total', descending=True)
+        .sort('draft_v', descending=True)
     )
 
     filter_dict = {

@@ -118,15 +118,17 @@ def main():
     if st.button('Clear selected players'):
         st.session_state['selected_pids'] = []
 
+    seasons_ahead = st.checkbox('Next Year')
+
     df_display = (
         df_filtered
-        .filter(pl.col('season') == settings['season'])
+        .filter(pl.col('season') == settings['season'] + seasons_ahead)
         .select(
             'player', 'pid', 'team', 'pos', 'age', 'p_rk', 'line', 'ovr', 'pot', 'years', 'salary',
             pl.col('value'), pl.col('sum_value'),
             pl.col('cv_current'), pl.col('cv_next'), pl.col('cv_total')
         )
-        .sort('cv_total', descending=True)
+        .sort('ovr', descending=True)
     )
 
     filter_dict = {
@@ -155,13 +157,21 @@ def main():
         )
         .select(
             'player', 'team', 'pos', 'age', 'p_rk', 'pr_rk', 'ovr', pl.col('pot').round(0), 'years', 'salary',
+            'sum_value',
             pl.col('value').round(2), pl.col('cv_current').round(2), pl.col('cv_total').round(2)
         )
         .sort('cv_total', descending=True)
     )
 
-    selected_by_team_df = selected_df.group_by('team').agg(pl.sum('cv_current', 'cv_total')).sort('cv_total',
-                                                                                                  descending=True)
+    selected_by_team_df = (
+        selected_df
+        .with_columns(future=pl.col('cv_total') - pl.col('value') + pl.col('salary'))
+        .group_by('team')
+        .agg(
+            pl.sum('value', 'sum_value', 'cv_current', 'future', 'cv_total')
+        )
+        .sort('cv_total', descending=True)
+    )
 
     if st.checkbox('Trade'):
         col1, col2 = st.columns(2, gap='large')
@@ -179,10 +189,17 @@ def main():
         players
         .filter(pl.col('season') == settings['season'] + 0)
         .filter(pl.col('tid') >= 0)
-        .select('team', 'value', 'sum_value', 'cv_current', pl.col('cv_next').clip(0, ), 'cv_total')
+        .select(
+            'team',
+            pl.col('value').round(0),
+            pl.col('sum_value').round(2),
+            pl.col('cv_current').round(2),
+            pl.col('cv_total').round(2)
+        )
         .group_by('team')
         .sum()
-        .sort('cv_total', descending=True))
+        .sort('value', descending=True),
+    )
 
 
 if __name__ == '__main__':

@@ -1,5 +1,6 @@
 # Data
-# /data/
+/data/
+/league_files/
 
 # Mac OS-specific storage files
 .DS_Store

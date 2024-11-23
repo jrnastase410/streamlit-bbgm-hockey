@@ -19,6 +19,7 @@ def load_teams(json_data):
     # logger.info('Loading teams')
     return (
         json_data.select('teams').explode('teams').unnest('teams')
+        .filter(pl.col('disabled') == False)
         .select('tid', pl.col('abbrev').alias('team'), )
         .extend(pl.DataFrame({'tid': [-2, -1], 'team': ['Draft', 'FA']}))
     )
@@ -28,9 +29,19 @@ def load_players(json_data, team_data, settings):
     # logger.info('Loading players')
     n_teams = int(32)
     players_raw = json_data.select('players').explode('players').unnest('players').lazy()
+    birth_places = (
+        players_raw
+        .select(pl.col('pid'), pl.col('born'))
+        .unnest('born')
+        .select(
+            pl.col('pid'),
+            pl.col('loc').str.split(', ').list[-1].alias('country')
+        )
+    )
     progression = pl.scan_parquet(DATA_DIR / 'constants' / 'calculated_progs.parquet')
     return (
         load_and_process_players(players_raw, progression, settings)
+        .join(birth_places.collect(), on='pid', how='left')
         .join(team_data, on='tid', how='left')
         .with_columns(is_current=pl.col('status') == 'current')
         .with_columns(years=pl.col('is_current').sum().over('pid'))
